@@ -26,6 +26,21 @@ addRow: `
     ) 
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `,
+getByUsername: `
+    SELECT 
+        id 
+    FROM
+        Users
+    WHERE
+        username = ?
+        `,
+getByEmail:`
+    SELECT
+        id
+    FROM
+        Users
+    WHERE
+        email = ?`
 }
 
 module.exports = usermodels;
