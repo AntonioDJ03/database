@@ -40,7 +40,16 @@ getByEmail:`
     FROM
         Users
     WHERE
-        email = ?`
+        email = ?`,
+updateRow: `
+    PENDIENTE`,
+deleteRow:`
+UPDATE
+    Users
+SET
+    id_isactive =0
+WHERE
+    id =?`,
 }
 
 module.exports = usermodels;

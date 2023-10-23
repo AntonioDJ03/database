@@ -10,5 +10,5 @@ router.get('/:id', listUserByID);
 router.put('/', addUser);
 //router.put('/', listUsers);
 //router.patch('/', listUsers);
-//router.delete('/', listUsers);
+router.delete('/:id',deleteUser);
 module.exports =router;
