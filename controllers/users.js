@@ -1,259 +1,354 @@
-const { request, response } = require('express');
-const usersModel = require('../models/users')
-const pool = require('../db');
+const {request, response} = require('express');
+const bcrypt = require ('bcrypt');
+const usermodels = require('../models/users');
+const pool=require('../db');
 
-//endpoint
+
 const listUsers = async (req = request, res = response) => {
-    let conn;
-
-    try {
-        conn = await pool.getConnection();
-
-        const users = await conn.query(usersModel.getAll, (err) =>{
-            if(err){
-                throw err
-            }
-        });
-        
-        res.json(users);
-    } catch (error) {
-        console.log(error);
-        res.status(500).json(error);
-    }finally{
-        if (conn) conn.end();
-    }
-}
-
-//endpoint
-const listUserByID = async (req = request, res = response) => {
-    const {id} = req.params;
-
-    if (isNaN(id)){
-        res.status(404).json({msg: 'Invalid ID'});
-        return;
-    }
-
-    let conn;
-
-    try {
-        conn = await pool.getConnection();
-
-        const [user] = await conn.query(usersModel.getByID, [id], (err) =>{
-            if(err){
-                throw err
-            }
-        });
-
-        if (!user){
-            res.status(404).json({msg:'User not found'});
-            return;
-        }
-        res.json(user);
-    } catch (error) {
-        console.log(error);
-        res.status(500).json(error);
-    }finally{
-        if (conn) conn.end();
-    }
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////12/10/2023
-    /*
-    {
-                username: 'admin',
-                email: 'admin@example.com',
-                password: '123',
-                name: 'Administrador',
-                lastname: 'De sitios',
-                phone_number: '55555555',
-                role_id: '1',
-                is_active: '1', 
-    }
-    */
-
-const addUser = async (req = request, res = response) => {
-    const {
-        username,
-        email,
-        password,
-        name,
-        lastname,
-        phone_number,
-        role_id,
-        id_isactive = 1
-    } = req.body;
-
-    if(!username || !email || !password || !name || !lastname || !role_id){
-        res.status(400).json({msg: 'Missing information'});
-        return;
-    }
-
-    const user = [username, email, password, name, lastname, phone_number, role_id, id_isactive];
-
-    let conn;
+    let conn; 
 
     try{
         conn = await pool.getConnection();
-//***********************************
-        const [usernameUser] = await conn.query(
-            usersModel.getByUsername,
-            [username],
-            (err) => {if (err) throw err;}
-        );
-        if(usernameUser) {
-            res.status(409).json({msg: `User with ${username} already exists`});
-            return;
+
+    const users = await conn.query (usermodels.getAll, (err)=>{
+        if(err){
+            throw err
         }
-//****************************
-        const [emailUser] = await conn.query(
-            usersModel.getByEmail,
-            [email],
-            (err) => {if (err) throw err;}
-        );
-        if(emailUser) {
-            res.status(409).json({msg: `User whith ${email} already exists`});
-            return;
-        }
+    });
 
-        const userAdded = await conn.query(usersModel.addRow, [...user], (err) => {
-            if(err) throw err;
-        });
-
-        if (userAdded.affecteRows === 0) throw new Error({message: 'Failed to add user'});
-        res.json({msg: 'User added successfully'});
-
+    res.json(users);
     } catch (error){
         console.log(error);
         res.status(500).json(error);
-    } finally {
-        if(conn) conn.end();
+    } finally{
+        if (conn) conn.end();
     }
+    
 }
 
-const ModifyUserByID = async (req = request, res = response)=>{
-    //---------------------------- recibe los datos -----------------------------
-        const {id} = req.params;// Captura el ID de los parámetros en la URL
-        console.log(`Received PATCH request for user with ID: ${id}`);//ver el ID en consola
+const listUsersByID = async (req = request, res = response) => {
+    const {id} = req.params;
 
-        const {
-            username, 
-            email, 
-            password, 
-            name, 
-            lastname,
-            phone_number = '',
-            role_id,
-            id_isactive = 1
-        } =req.body; //Extrae los datos
-    //----------------------------
-       // Comprueba si algunos datos requeridos están ausentes y responde con un mensaje de error si es el caso
-        if (!username || !email || !password || !name || !lastname || !role_id){
-            res.status(400).json({msg: "Missing information"});
+    if (isNaN(id)) {
+        res.status(400).json({msg: 'Invalid ID'});
+        return;
+    }
+
+
+    let conn; 
+
+    try{
+        conn = await pool.getConnection();
+
+    const [user] = await conn.query (usermodels.getByID, [id], (err)=>{
+        if(err){
+            throw err
+        }
+    });
+
+    if (!user) {
+        res.status(404).json({msg: 'User not foud'});
+        return;
+    }
+
+    res.json(user);
+    } catch (error){
+        console.log(error);
+        res.status(500).json(error);
+    } finally{
+        if (conn) conn.end();
+    }
+}
+/* 3 endponit*/
+const addUser = async (req = request, res =response)=>{
+    const {
+     username,
+     email,
+     password,
+     name,
+     lastname,
+     phone_number ='',
+     role_id,
+     id_isactive = 1
+    } = req.body;
+
+   
+  
+    if(!username || !email || !password || !name || !lastname ||!role_id){
+        res.status(400).json ({msg: 'Missing information'});
+        return;
+    }
+///24-10-2023//
+
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password,saltRounds);
+
+
+
+    const user =[username, email, passwordHash, name, lastname, phone_number, role_id, id_isactive];
+//24-10-2023 hasta aqui//
+    let conn;
+
+    try{
+        conn= await pool.getConnection();
+
+        const [usernameUsers] = await conn.query(
+            usermodels.getByUserame,
+            [username],
+            (err)=>{if (err) throw err;}
+        );
+        if (usernameUsers) {
+            res.status(409).json({msg: `USER WHTH USERNAME ${username} already exists`});
             return;
         }
- 
-         let conn;
-    
-         try {
-            conn = await pool.getConnection();//Conexion a la bd
-    
-            // Realiza una consulta para obtener el usuario existente con el ID especificado
-            const [existingUser] = await conn.query(
-                usersModel.getByID, 
-                [id],
-                (err)=>{if(err)throw err;});
-            // Verifica si el usuario existe en la base de datos y responde con un error 404 si no se encuentra
-            if (!existingUser) {
-                res.status(404).json({ msg: `User with id ${id} not found` });
-                return;
-            }
-    //----------------
-             // Realiza una consulta y comprueba si ya existe un usuario con el mismo nombre de usuario y 
-             //responde con un error 409 si es el caso
-            const [usernameUser] = await conn.query(
-                usersModel.getByUserName,
-                [username],
-                (err)=>{if(err)throw err;}
-            );
-            if (usernameUser){
-                res.status(409).json({msg: `User with username ${username} already exists`});
-                return;
-            }
-    //---------------
-            // Realiza una consulta y comprueba si ya existe un usuario con el mismo email y 
-            //responde con un error 409 si es el caso
-            const [emailUser] = await conn.query(
-                usersModel.getByEmail,
-                [email],
-                (err)=>{if(err)throw err;}
-            );
-            if (emailUser){
-                res.status(409).json({msg: `User with username ${email} already exists`});
-                return;
-            }
-    
-    //---------------       
-            // Aqui se realiza una consulta de actualización para modificar los datos del usuario
-            const updateResult = await conn.query(
-                usersModel.updateByID,
-                [username, email, password, name, lastname, phone_number, role_id, id_isactive, id]
-            );
-
-            // Verifica si la consulta de actualización afectó a alguna fila en la base de datos y responde 
-            //con un error 404 si no se realizaron modificaciones
-            if (updateResult.affectedRows === 0) {
-                res.status(404).json({msg: `Failed to modify user`})
-                return;
-            }
-            res.json({ msg: "User modified successfully" });
-            
-        } catch (error) {
-            console.error(error);
-            res.status(500).json(error);
-        } finally {
-            if (conn) conn.end();// Libera la conexión a la base de datos
-        }
-
-        const updateUser = async (req = request, res=response) => {
-            //Pendiente
-        }
-
-        const deleteUser = async (req=request, res=response) => {
-            let conn;
-            const {id} = req.params;
 
             
-            try {
-                conn = await pool.getConnection();
 
-            const [userExists] = await conn.query(
-                    usersModel.getByID,
-                    [id],
-                    (err) => {throw err;}
-    
-                )
-                if (!userExists || userExists.id_isactive ==0) {
-                    res.status(404).json({msg:'User not found'});
-                    return;
-                }
-    
-            const userDeleted = await conn.query(
-                usersModel.deleteRow,
-                [id],
-                (err) => {if (err) throw err;}
-            )
-            if (userDeleted.affectedRows == 0){
-                throw new Error({message: 'Failed to delete user'})
-            };
-
-            res.json({msg:'User deleted successfully'});
-            
-            }catch (error) {
-            console.log(error);
-            res.status(500).json(error);
-        }finally{
-            if(conn) conn.end();
+        const [emailUsers] = await conn.query(
+            usermodels.getByEmail,
+            [email],
+            (err)=>{if (err) throw err;}
+        );
+        if (emailUsers) {
+            res.status(409).json({msg: `USER WHTH EMAIL ${email} already exists`});
+            return;
         }
-    }
+
+
+
+const userAdded = await conn.query(usermodels.addRow, [...user], (err) => {
+  if (err)throw err;
+});
+
+
+if (userAdded.affectedRows === 0 ) throw new Error ({message:'FAILED TO ADD USER'});
+
+res.json({msg: 'User added successfully'});
+
+    }catch(error){
+      console.log(error);
+      res.status(500).json(error);
+    }finally{
+    if (conn) conn.end();
 }
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////12/10/2023
-module.exports = { listUsers, listUserByID, addUser,deleteUser };
+}
+
+
+/*/Mi modificacion//18-10-2023
+
+const updateUser = async (req, res) => {
+    const { id } = req.params;
+    const userData = req.body; // actualizacion de datos
+  
+    if (!userData || Object.keys(userData).length === 0) {
+      return res.status(400).json({ msg: 'No data provided for update' });
+    }
+  
+    let conn;
+    try {
+      conn = await pool.getConnection();
+  
+      // Verificacion
+      const [existingUser] = await conn.query(usermodels.getByID, [id]);
+      if (!existingUser) {
+        return res.status(404).json({ msg: 'User not found' });
+      }
+  
+      // Realiza las validaciones
+      
+      if (userData.username) {
+        const [existingUserByUsername] = await conn.query(
+          usermodels.getByUserame,
+          [userData.username]
+        );
+        if (existingUserByUsername && existingUserByUsername.id !== id) {
+          return res.status(409).json({ msg: 'Username already in use' });
+        }
+      }
+      if (userData.email) {
+        const [existingUserByEmail] = await conn.query(
+          usermodels.getByEmail,
+          [userData.email]
+        );
+        if (existingUserByEmail && existingUserByEmail.id !== id) {
+          return res.status(409).json({ msg: 'Email already in use' });
+        }
+      }
+  
+      // Realizacion de cambios
+      const allowedFields = ['username', 'email', 'password', 'name', 'lastname', 'phone_number', 'role_id','is_active'];
+      const updateData = {};
+  
+      allowedFields.forEach((field) => {
+        if (userData[field] !== undefined) {
+          updateData[field] = userData[field];
+        }
+      });
+  
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ msg: 'No valid fields to update' });
+      }
+  
+      // utiliza la consultas
+      const result = await conn.query(
+        usermodels.updateUser,
+        [
+          updateData.username,
+          updateData.email,
+          updateData.password, // Actualizar contraseña
+          updateData.name,
+          updateData.lastname,
+          updateData.phone_number,
+          updateData.role_id,
+          updateData.is_active,
+          id
+        ]
+      );
+  
+      if (result.affectedRows === 0) {
+        return res.status(500).json({ msg: 'Failed to update user' });
+      }
+  
+      return res.json({ msg: 'User updated successfully' });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json(error);
+    } finally {
+      if (conn) conn.end();
+    }
+  };
+  
+  //HASTA AQUI MI TERMINACION./*/
+
+//UPDATEUSERS//
+const updateUser=async(req, res)=>{
+  const {
+      username,
+      email,
+      password,
+      name,
+      lastname,
+      phone_number,
+      role_id,
+      id_isactive ,
+  } = req.body;
+
+const {id} = req.params;
+let newUserData=[
+  username,
+  email,
+  password,
+  name,
+  lastname,
+  phone_number,
+  role_id,
+  id_isactive   
+];
+let conn;
+try{
+  conn = await pool.getConnection();
+const [userExists]=await conn.query(
+  usermodels.getByID,
+  [id],
+  (err) => {if (err) throw err;}
+);
+if (!userExists || userExists.id_isactive === 0){
+  res.status(404).json({msg:'User not found'});
+  return;
+}
+//24-10-2023//
+const [usernameUser] = await conn.query(
+  usermodels.getByUserame,
+  [username],
+  (err) => {if (err) throw err;}
+);
+if (usernameUser){
+  res.status(409).json({msg:`User with username ${username} already exists`});
+  return;
+}
+
+const [emailUsers] = await conn.query(
+  usermodels.getByEmail,
+  [email],
+  (err)=>{if (err) throw err;}
+);
+if (emailUsers) {
+  res.status(409).json({msg: `USER WHTH EMAIL ${email} already exists`});
+  return;
+}
+//24-10-2023/hasta qui/
+
+const oldUserData = [
+  userExists.username,
+  userExists.email,
+  userExists.password,
+  userExists.name,
+  userExists.lastname,
+  userExists.phone_number,
+  userExists.role_id,
+  userExists.id_isactive  
+];
+
+newUserData.forEach((userData, index)=> {
+  if (!userData){
+      newUserData[index] = oldUserData[index];
+  }
+})
+
+const userUpdate = await conn.query(
+  usermodels.updateUser,
+  [...newUserData, id],
+  (err) => {if (err) throw err;}
+);
+if(userUpdate.affecteRows === 0){
+  throw new Error ('User not updated');
+}
+res.json({msg:'User updated successfully'})
+}catch (error){
+      console.log(error);
+      res.status(500).json(error);
+  } finally{
+      if (conn) conn.end();
+  }
+};
+
+//detele usuario 19-100203//
+const deteleUsers = async (req = request, res = response) => {
+  let conn;
+  const {id} = req.params;
+
+  try {
+    conn = await pool.getConnection();
+
+    const [userExists] = await conn.query(
+      usermodels.getByID,
+      [id],
+      (err) => {throw err;}
+  
+    )
+     if(!userExists || userExists.id_isactive == 0) {
+      res.status(404).json({msg: 'USER NOT FOUND'});
+      return;
+     }
+  
+  
+     const userDelete = await conn.query (
+      usermodels.deleteRow,
+      [id],
+      (err) => {if (err) throw err;}
+     )
+  
+     if (userDelete.affectedRows ===0) {
+      throw new Error({message : 'FAILED TO DELETE USER'})
+     };
+     
+     res.json ({msg: 'USER DELETED SUCCESSFULLY'});
+
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(error);
+  } finally {
+    if (conn) conn.end();
+  }
+}
+module.exports={listUsers, listUsersByID, addUser, updateUser, deteleUsers};
